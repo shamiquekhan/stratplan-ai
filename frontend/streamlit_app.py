@@ -220,7 +220,15 @@ div[data-baseweb="menu"] div { color: var(--black) !important; }
 
 section.main label, section.main [data-testid="stWidgetLabel"],
 div[data-testid="stWidgetLabel"] label,
-section.main [data-baseweb="form"] label {
+section.main [data-baseweb="form"] label,
+section.main form label,
+section.main div[data-baseweb="input"] label,
+section.main div[data-baseweb="select"] label,
+section.main div[data-baseweb="textarea"] label,
+section.main [data-testid="stTextInput"] label,
+section.main [data-testid="stTextArea"] label,
+section.main [data-testid="stSelectbox"] label,
+section.main [data-testid="stNumberInput"] label {
     color: var(--black) !important;
     font-weight: 600 !important;
     font-size: 10px !important;
