@@ -218,7 +218,9 @@ ul[role="listbox"] li { color: var(--black) !important; background: var(--white)
 ul[role="listbox"] li:hover { background: var(--gray-100) !important; }
 div[data-baseweb="menu"] div { color: var(--black) !important; }
 
-section.main label, section.main [data-testid="stWidgetLabel"] {
+section.main label, section.main [data-testid="stWidgetLabel"],
+div[data-testid="stWidgetLabel"] label,
+section.main [data-baseweb="form"] label {
     color: var(--black) !important;
     font-weight: 600 !important;
     font-size: 10px !important;
