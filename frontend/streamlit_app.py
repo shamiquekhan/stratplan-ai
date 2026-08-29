@@ -123,6 +123,14 @@ section[data-testid="stSidebar"] div {
     line-height: 1.6 !important;
 }
 
+div[data-testid="stForm"] label {
+    color: var(--black) !important;
+    font-weight: 600 !important;
+    font-size: 10px !important;
+    letter-spacing: 0.15em !important;
+    text-transform: uppercase !important;
+}
+
 .stMarkdown strong { font-weight: 600 !important; }
 
 hr { border: none !important; border-top: 1px solid var(--black) !important; margin: 2rem 0 !important; }
@@ -228,7 +236,16 @@ section.main div[data-baseweb="textarea"] label,
 section.main [data-testid="stTextInput"] label,
 section.main [data-testid="stTextArea"] label,
 section.main [data-testid="stSelectbox"] label,
-section.main [data-testid="stNumberInput"] label {
+section.main [data-testid="stNumberInput"] label,
+[data-baseweb="form"] label,
+form label,
+div[data-baseweb="input"] > label,
+div[data-baseweb="select"] > label,
+div[data-baseweb="textarea"] > label,
+.stTextInput label,
+.stTextArea label,
+.stSelectbox label,
+.stNumberInput label {
     color: var(--black) !important;
     font-weight: 600 !important;
     font-size: 10px !important;
