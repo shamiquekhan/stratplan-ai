@@ -101,6 +101,18 @@ h1, h2, h3, h4, h5, h6 {
     margin: 0 !important;
 }
 
+section[data-testid="stSidebar"] h1,
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3,
+section[data-testid="stSidebar"] h4,
+section[data-testid="stSidebar"] h5,
+section[data-testid="stSidebar"] h6,
+section[data-testid="stSidebar"] p,
+section[data-testid="stSidebar"] span,
+section[data-testid="stSidebar"] div {
+    color: var(--white) !important;
+}
+
 .stMarkdown h1 { font-size: 3.5rem !important; }
 .stMarkdown h2 { font-size: 2rem !important; }
 .stMarkdown h3 { font-size: 1.1rem !important; letter-spacing: 0.08em !important; text-transform: uppercase !important; font-weight: 600 !important; }
@@ -480,9 +492,9 @@ def main():
         st.session_state.current_plan_id = None
 
     with st.sidebar:
-        st.markdown("""<div style="padding:8px 0 24px 0;"><div style="font-size:1.4rem;font-weight:700;letter-spacing:-0.04em;line-height:0.92;color:#FFFFFF;">STRATPLAN<span style="color:#FF0000;">.</span></div><div style="font-size:9px;letter-spacing:0.25em;text-transform:uppercase;color:#FFFFFF;margin-top:4px;">AI PLANNING SYSTEM</div></div>""", unsafe_allow_html=True)
+        st.markdown("""<div style="padding:8px 0 24px 0;"><div style="font-size:1.4rem;font-weight:700;letter-spacing:-0.04em;line-height:0.92;color:#FFFFFF !important;">STRATPLAN<span style="color:#FF0000 !important;">.</span></div><div style="font-size:9px;letter-spacing:0.25em;text-transform:uppercase;color:#FFFFFF !important;margin-top:4px;">AI PLANNING SYSTEM</div></div>""", unsafe_allow_html=True)
         st.markdown("<hr>", unsafe_allow_html=True)
-        st.markdown("""<div style="display:flex;align-items:center;gap:8px;"><div style="width:6px;height:6px;background:#00FF00;border-radius:50%;"></div><span style="font-size:10px;letter-spacing:0.15em;text-transform:uppercase;font-weight:500;color:#FFFFFF;">SYSTEM ONLINE</span></div>""", unsafe_allow_html=True)
+        st.markdown("""<div style="display:flex;align-items:center;gap:8px;"><div style="width:6px;height:6px;background:#00FF00;border-radius:50%;"></div><span style="font-size:10px;letter-spacing:0.15em;text-transform:uppercase;font-weight:500;color:#FFFFFF !important;">SYSTEM ONLINE</span></div>""", unsafe_allow_html=True)
         st.markdown("<hr>", unsafe_allow_html=True)
         page = st.radio("Navigation", ["Create Plan", "Dashboard", "Plan Details"], label_visibility="collapsed")
 
