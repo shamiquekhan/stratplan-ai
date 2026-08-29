@@ -40,7 +40,34 @@ section[data-testid="stSidebar"] {
     border-right: 1px solid var(--black) !important;
 }
 
+section[data-testid="stSidebar"] header {
+    background: var(--black) !important;
+}
+
+section[data-testid="stSidebar"] [data-testid="stSidebarHeader"],
+section[data-testid="stSidebar"] [data-testid="stSidebarContent"] > div:first-child {
+    background: var(--black) !important;
+}
+
+section[data-testid="stSidebar"] button[kind="secondary"] {
+    background: transparent !important;
+    border: 1px solid #333 !important;
+    color: var(--white) !important;
+}
+
+section[data-testid="stSidebar"] button[kind="secondary"]:hover {
+    background: #222 !important;
+}
+
 section[data-testid="stSidebar"] * { color: var(--white) !important; }
+
+[data-testid="stSidebarCollapseButton"] {
+    display: none !important;
+}
+
+[data-testid="stSidebarCollapseButton"] svg {
+    display: none !important;
+}
 
 section[data-testid="stSidebar"] .stRadio label {
     border: 1px solid #333 !important;
@@ -56,6 +83,14 @@ section[data-testid="stSidebar"] .stRadio label {
 
 section[data-testid="stSidebar"] .stRadio label:hover { background: #222 !important; }
 section[data-testid="stSidebar"] .stRadio label[data-baseweb="radio"] { background: transparent !important; }
+
+section[data-testid="stSidebar"] [data-baseweb="icon"] {
+    color: var(--white) !important;
+}
+
+section[data-testid="stSidebar"] [data-baseweb="icon"] svg {
+    fill: var(--white) !important;
+}
 
 h1, h2, h3, h4, h5, h6 {
     font-family: 'Space Grotesk', sans-serif !important;
