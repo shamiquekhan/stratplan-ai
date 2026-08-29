@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ plan.plan.name }} - Business Plan</title>
+    <style>
+        @page { margin: 2.5cm; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #0a0a0a; background: #F5F5F0; }
+        .container { max-width: 800px; margin: 0 auto; padding: 2rem; background: white; box-shadow: 0 0 20px rgba(0,0,0,0.05); }
+        .header { text-align: center; border-bottom: 2px solid #0a0a0a; padding-bottom: 2rem; margin-bottom: 2rem; }
+        .header h1 { font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; font-size: 2.5rem; margin: 0; color: #0a0a0a; }
+        .header h1 span { color: #FF3B30; }
+        .header .meta { font-size: 0.9rem; color: #757575; margin-top: 0.5rem; }
+        h2 { font-weight: 800; letter-spacing: -0.02em; font-size: 1.5rem; border-bottom: 1px solid #0a0a0a; padding-bottom: 0.5rem; margin-top: 2.5rem; color: #0a0a0a; }
+        h3 { font-weight: 700; font-size: 1.1rem; margin-top: 1.5rem; color: #0a0a0a; }
+        p { margin: 0.75rem 0; }
+        .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin: 1.5rem 0; }
+        .metric { background: #F5F5F0; border: 1px solid #0a0a0a; padding: 1rem; }
+        .metric label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: #757575; display: block; margin-bottom: 0.25rem; }
+        .metric value { font-weight: 700; font-size: 1.25rem; color: #0a0a0a; }
+        table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+        th, td { border: 1px solid #E5E5E5; padding: 0.5rem; text-align: left; }
+        th { background: #0a0a0a; color: white; font-weight: 600; }
+        tr:nth-child(even) { background: #F5F5F0; }
+        .section { margin: 2rem 0; }
+        .tag { display: inline-block; background: #F5F5F0; border: 1px solid #0a0a0a; padding: 0.25rem 0.75rem; margin: 0.25rem; font-size: 0.8rem; }
+        ul { margin: 0.5rem 0; padding-left: 1.5rem; }
+        li { margin: 0.25rem 0; }
+        .swot-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+        .swot-box { border: 1px solid #0a0a0a; padding: 1rem; }
+        .swot-box h4 { font-weight: 700; margin: 0 0 0.5rem; text-transform: uppercase; letter-spacing: 0.03em; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{{ plan.plan.name }}<span>.</span></h1>
+            <div class="meta">{{ plan.plan.frequency|title }} Plan  •  {{ plan.plan.industry }}  •  {{ plan.plan.company_size }}  •  {{ plan.generated_at }}</div>
+        </div>
+
+        <section>
+            <h2>EXECUTIVE SUMMARY</h2>
+            <div style="white-space: pre-wrap;">{{ plan.generated_plan }}</div>
+        </section>
+
+        <section>
+            <h2>KEY METRICS</h2>
+            {% if plan.financial_projections %}
+            <div class="metric-grid">
+                {% set assumptions = plan.financial_projections.assumptions or {} %}
+                {% set key_metrics = plan.financial_projections.key_metrics or {} %}
+                <div class="metric"><label>Revenue Growth</label><value>{{ ((assumptions.revenue_growth_rate or 0) * 100)|round|int }}%</value></div>
+                <div class="metric"><label>Gross Margin</label><value>{{ ((assumptions.gross_margin or 0) * 100)|round|int }}%</value></div>
+                <div class="metric"><label>Runway</label><value>{{ (key_metrics.runway_months or 0)|round(1) }} mo</value></div>
+                <div class="metric"><label>Break-even</label><value>Mo {{ key_metrics.break_even_month or '—' }}</value></div>
+            </div>
+            {% endif %}
+        </section>
+
+        {% if plan.market_analysis %}
+        <section>
+            <h2>MARKET ANALYSIS</h2>
+            <div class="metric-grid">
+                <div class="metric"><label>TAM</label><value>${{ "{:,.0f}".format(plan.market_analysis.tam or 0) }}</value></div>
+                <div class="metric"><label>SAM</label><value>${{ "{:,.0f}".format(plan.market_analysis.sam or 0) }}</value></div>
+                <div class="metric"><label>SOM</label><value>${{ "{:,.0f}".format(plan.market_analysis.som or 0) }}</value></div>
+                <div class="metric"><label>Market Growth</label><value>{{ (plan.market_analysis.market_growth_rate * 100)|round(1) }}%</value></div>
+            </div>
+            
+            {% if plan.market_analysis.key_trends %}
+            <h3>Key Trends</h3>
+            <ul>
+            {% for trend in plan.market_analysis.key_trends %}
+                <li>{{ trend }}</li>
+            {% endfor %}
+            </ul>
+            {% endif %}
+            
+            {% if plan.market_analysis.target_segments %}
+            <h3>Target Segments</h3>
+            <table>
+                <thead><tr><th>Segment</th><th>Size</th><th>Growth Rate</th></tr></thead>
+                <tbody>
+                {% for seg in plan.market_analysis.target_segments %}
+                    <tr><td>{{ seg.segment }}</td><td>${{ "{:,.0f}".format(seg.size) }}</td><td>{{ (seg.growth_rate * 100)|round(1) }}%</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        </section>
+        {% endif %}
+
+        {% if plan.financial_projections %}
+        <section>
+            <h2>FINANCIAL PROJECTIONS</h2>
+            
+            {% set fin = plan.financial_projections %}
+            
+            <h3>P&L Summary (Annual)</h3>
+            <table>
+                <thead><tr><th>Period</th><th>Revenue</th><th>Gross Profit</th><th>EBITDA</th><th>Net Income</th></tr></thead>
+                <tbody>
+                {% for row in fin.pnl %}
+                    {% if 'Year' in row.period or 'Month 12' in row.period or 'Month 24' in row.period or 'Month 36' in row.period %}
+                    <tr>
+                        <td>{{ row.period }}</td>
+                        <td>${{ "{:,.0f}".format(row.revenue) }}</td>
+                        <td>${{ "{:,.0f}".format(row.gross_profit) }}</td>
+                        <td>${{ "{:,.0f}".format(row.ebitda) }}</td>
+                        <td>${{ "{:,.0f}".format(row.net_income) }}</td>
+                    </tr>
+                    {% endif %}
+                {% endfor %}
+                </tbody>
+            </table>
+
+            <h3>Key Assumptions</h3>
+            <table>
+                <thead><tr><th>Assumption</th><th>Value</th></tr></thead>
+                <tbody>
+                {% for key, value in fin.assumptions.items() %}
+                    <tr>
+                        <td>{{ key.replace('_', ' ').title() }}</td>
+                        <td>{% if value is number %}{{ (value * 100)|round(1) }}%{% else %}{{ value }}{% endif %}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </section>
+        {% endif %}
+
+        {% if plan.strategy %}
+        <section>
+            <h2>STRATEGY</h2>
+            
+            {% set strat = plan.strategy %}
+            
+            {% if strat.swot %}
+            <h3>SWOT Analysis</h3>
+            <div class="swot-grid">
+                <div class="swot-box"><h4>Strengths</h4><ul>{% for s in strat.swot.strengths %}<li>{{ s }}</li>{% endfor %}</ul></div>
+                <div class="swot-box"><h4>Weaknesses</h4><ul>{% for w in strat.swot.weaknesses %}<li>{{ w }}</li>{% endfor %}</ul></div>
+                <div class="swot-box"><h4>Opportunities</h4><ul>{% for o in strat.swot.opportunities %}<li>{{ o }}</li>{% endfor %}</ul></div>
+                <div class="swot-box"><h4>Threats</h4><ul>{% for t in strat.swot.threats %}<li>{{ t }}</li>{% endfor %}</ul></div>
+            </div>
+            {% endif %}
+
+            {% if strat.gtm_strategy %}
+            <h3>Go-to-Market</h3>
+            {% if strat.gtm_strategy.value_proposition %}
+            <p><strong>Value Proposition:</strong> {{ strat.gtm_strategy.value_proposition }}</p>
+            {% endif %}
+            {% if strat.gtm_strategy.channels %}
+            <table>
+                <thead><tr><th>Channel</th><th>Priority</th><th>Budget %</th><th>Expected CAC</th><th>Timeline</th></tr></thead>
+                <tbody>
+                {% for ch in strat.gtm_strategy.channels %}
+                    <tr><td>{{ ch.channel }}</td><td>{{ ch.priority|title }}</td><td>{{ (ch.budget_allocation * 100)|round }}%</td><td>${{ "{:,.0f}".format(ch.expected_cac) }}</td><td>{{ ch.timeline }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+            {% endif %}
+
+            {% if strat.okrs %}
+            <h3>OKRs</h3>
+            {% for okr in strat.okrs %}
+            <h4>{{ okr.objective }}</h4>
+            <ul>
+            {% for kr in okr.key_results %}
+                <li>{{ kr.metric }}: {{ kr.target }} {{ kr.unit }} (Owner: {{ okr.owner }})</li>
+            {% endfor %}
+            </ul>
+            {% endfor %}
+            {% endif %}
+
+            {% if strat.milestones %}
+            <h3>Milestones</h3>
+            <table>
+                <thead><tr><th>Milestone</th><th>Target Date</th><th>Dependencies</th><th>Success Criteria</th></tr></thead>
+                <tbody>
+                {% for ms in strat.milestones %}
+                    <tr><td>{{ ms.milestone }}</td><td>{{ ms.target_date[:10] }}</td><td>{{ ms.dependencies|join(', ') }}</td><td>{{ ms.success_criteria }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        </section>
+        {% endif %}
+
+        {% if plan.competitor_analysis and plan.competitor_analysis.competitors %}
+        <section>
+            <h2>COMPETITIVE ANALYSIS</h2>
+            {% for comp in plan.competitor_analysis.competitors %}
+            <h3>{{ comp.name }}</h3>
+            <p><strong>Website:</strong> {{ comp.website }} | <strong>Pricing:</strong> {{ comp.pricing_model }} | <strong>Stage:</strong> {{ comp.funding_stage }}</p>
+            {% if comp.key_features %}
+            <p><strong>Key Features:</strong></p>
+            <ul>{% for f in comp.key_features[:5] %}<li>{{ f }}</li>{% endfor %}</ul>
+            {% endif %}
+            {% endfor %}
+
+            {% if plan.competitor_analysis.competitive_matrix %}
+            <h3>Competitive Matrix</h3>
+            <table>
+                <thead><tr><th>Criteria</th>{% for name in plan.competitor_analysis.competitive_matrix.scores.keys() %}<th>{{ name }}</th>{% endfor %}</tr></thead>
+                <tbody>
+                {% for i, criterion in enumerate(plan.competitor_analysis.competitive_matrix.criteria) %}
+                    <tr><td>{{ criterion }}</td>{% for name, scores in plan.competitor_analysis.competitive_matrix.scores.items() %}<td>{{ scores[i] }}</td>{% endfor %}</tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        </section>
+        {% endif %}
+
+    </div>
+</body>
+</html>
