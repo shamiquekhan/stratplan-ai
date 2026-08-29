@@ -293,6 +293,7 @@ code, .stCode { font-family: 'JetBrains Mono', monospace !important; font-size: 
 .stAlert { border-radius: 0 !important; border: 1px solid var(--black) !important; }
 
 .swiss-section { margin-bottom: 3rem; }
+.swiss-section h2 { font-size: 3rem !important; }
 .swiss-label { font-size: 9px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--gray-400); font-weight: 500; margin-bottom: 4px; }
 .swiss-accent { color: var(--accent); }
 .swiss-body-text { font-size: 0.9rem; line-height: 1.7; color: var(--gray-600); max-width: 640px; }
@@ -504,7 +505,7 @@ def get_default_assumptions(plan: Dict, user_inputs: Dict) -> Dict[str, float]:
 # --- UI HELPERS ---
 
 def swiss_section(label, heading):
-    st.markdown(f"""<div class="swiss-section"><div class="swiss-label">{label}</div><h2 style="font-size:2rem;font-weight:700;letter-spacing:-0.04em;line-height:0.92;">{heading}<span class="swiss-accent">.</span></h2></div>""", unsafe_allow_html=True)
+    st.markdown(f"""<div class="swiss-section"><div class="swiss-label">{label}</div><h2 style="font-size:3rem;font-weight:700;letter-spacing:-0.04em;line-height:0.92;">{heading}<span class="swiss-accent">.</span></h2></div>""", unsafe_allow_html=True)
 
 def swiss_metric_card(label, value):
     return f"""<div style="border:1px solid #000;padding:20px;min-height:100px;"><div style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#737373;font-weight:500;margin-bottom:8px;">{label}</div><div style="font-size:1.8rem;font-weight:700;letter-spacing:-0.03em;">{value}</div></div>"""
