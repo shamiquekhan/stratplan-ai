@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, List
 
 st.set_page_config(
-    page_title="StratPlan",
+    page_title="StratPlan — AI Planning System",
     page_icon=None,
     layout="wide",
     initial_sidebar_state="expanded",
@@ -297,6 +297,36 @@ code, .stCode { font-family: 'JetBrains Mono', monospace !important; font-size: 
 .swiss-label { font-size: 9px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--gray-400); font-weight: 500; margin-bottom: 4px; }
 .swiss-accent { color: var(--accent); }
 .swiss-body-text { font-size: 0.9rem; line-height: 1.7; color: var(--gray-600); max-width: 640px; }
+.swiss-form-hint { font-size: 11px; color: var(--gray-500); letter-spacing: 0.02em; margin-bottom: 4px; }
+
+/* Sidebar nav: descriptions under each item, tighter cards */
+section[data-testid="stSidebar"] [data-testid="stRadio"] label {
+    padding: 10px 16px !important;
+}
+section[data-testid="stSidebar"] [data-testid="stRadio"] span[data-testid="stMarkdownContainer"] {
+    font-size: 12px !important;
+}
+section[data-testid="stSidebar"] .stCaption, section[data-testid="stSidebar"] [data-testid="stCaption"] {
+    color: #9A9A9A !important;
+    font-size: 10px !important;
+    letter-spacing: 0.06em;
+}
+
+/* Captions under metric cards / charts: readable, not shouting */
+.main [data-testid="stCaption"], .stApp [data-testid="stCaption"] {
+    color: var(--gray-500) !important;
+    font-size: 0.78rem !important;
+    line-height: 1.5 !important;
+    letter-spacing: 0.01em !important;
+    text-transform: none !important;
+}
+
+/* Success/warning/info callouts: squared, on-theme */
+.stSuccess, .stWarning, .stInfo {
+    border-radius: 0 !important;
+    border: 1px solid var(--black) !important;
+    font-size: 0.9rem !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -535,7 +565,33 @@ def main():
         st.markdown("<hr>", unsafe_allow_html=True)
         st.markdown("""<div style="display:flex;align-items:center;gap:8px;"><div style="width:6px;height:6px;background:#00FF00;border-radius:50%;"></div><span style="font-size:10px;letter-spacing:0.15em;text-transform:uppercase;font-weight:500;color:#FFFFFF !important;">SYSTEM ONLINE</span></div>""", unsafe_allow_html=True)
         st.markdown("<hr>", unsafe_allow_html=True)
-        page = st.radio("Navigation", ["Create Plan", "Dashboard", "Plan Details"], label_visibility="collapsed")
+
+        # Captions must stay static: dynamic widget params change the widget ID
+        # and reset the selection (classic Streamlit gotcha).
+        page = st.radio(
+            "Navigation",
+            ["Create Plan", "Dashboard", "Plan Details"],
+            label_visibility="collapsed",
+            captions=[
+                "Generate a new business plan",
+                "Browse and manage plans",
+                "View a generated plan",
+            ],
+        )
+
+        st.markdown("<hr>", unsafe_allow_html=True)
+        n_plans = len(st.session_state.plans)
+        st.markdown(
+            f"""<div style="font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:#8A8A8A !important;line-height:2.1;">
+            STEP 1 &mdash; CREATE PLAN<br/>
+            STEP 2 &mdash; REVIEW PLAN<br/>
+            STEP 3 &mdash; EXPORT PDF / DOCX / XLSX
+            </div>
+            <div style="font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:#6E6E6E !important;margin-top:14px;">
+            {n_plans} PLAN{"S" if n_plans != 1 else ""} THIS SESSION · STORED IN THIS BROWSER
+            </div>""",
+            unsafe_allow_html=True,
+        )
 
     if page == "Create Plan":
         create_plan_page()
@@ -547,41 +603,61 @@ def main():
 
 def create_plan_page():
     swiss_section("01", "CREATE PLAN")
-    st.markdown("""<p class="swiss-body-text">Six AI agents research, model, and write your plan. You get an investor-ready document with financial projections, market data, competitor intelligence, and execution tracking.</p>""", unsafe_allow_html=True)
+    st.markdown(
+        '''<p class="swiss-body-text">Answer six quick questions about your business. StratPlan researches your market,
+        builds a 36-month financial model, and writes an investor-ready plan you can export as PDF, DOCX or Excel.
+        Takes about a minute.</p>''',
+        unsafe_allow_html=True,
+    )
     st.markdown("<hr>", unsafe_allow_html=True)
 
     with st.form("plan_form"):
-        c1, c2, c3 = st.columns([2, 2, 1])
+        c1, c2, c3 = st.columns([2, 2, 1.4])
         with c1:
             st.markdown('<div class="swiss-label">IDENTITY</div>', unsafe_allow_html=True)
-            name = st.text_input("Plan Name", placeholder="Q3 2024 Growth Plan")
-            description = st.text_area("Description", placeholder="Brief description...", height=68)
-            frequency = st.selectbox("Frequency", ["Monthly", "Quarterly", "Yearly"])
+            st.caption("What is the plan called?")
+            name = st.text_input("Plan Name", placeholder="Q3 2024 Growth Plan", help="A label to recognize this plan later, e.g. 'FinPilot AI — 2026'.")
+            description = st.text_area("Description", placeholder="Brief description...", height=68, help="One or two sentences on what the company does. It feeds into the generated summary.")
+            frequency = st.selectbox("Planning Frequency", ["Monthly", "Quarterly", "Yearly"], help="How often you want to review and update this plan.")
         with c2:
             st.markdown('<div class="swiss-label">BUSINESS</div>', unsafe_allow_html=True)
-            industry = st.selectbox("Industry", ["SaaS", "FinTech", "HealthTech", "E-commerce", "Marketplace", "EdTech", "PropTech", "Logistics", "Manufacturing", "Professional Services", "Consumer App", "B2B Services", "Other"])
-            stage = st.selectbox("Company Stage", ["Idea", "MVP", "Early Traction", "Growth", "Scale"])
-            company_size = st.selectbox("Company Size", ["Pre-revenue", "$0-100k", "$100k-1M", "$1M-10M", "$10M+"])
+            st.caption("What does the company look like today?")
+            industry = st.selectbox(
+                "Industry",
+                [
+                    "SaaS", "FinTech", "HealthTech", "E-commerce", "Marketplace",
+                    "EdTech", "PropTech", "Logistics", "Manufacturing",
+                    "Professional Services", "Consumer App", "B2B Services", "Other",
+                ],
+                help="Sets market sizing defaults and benchmarks.",
+            )
+            stage = st.selectbox("Company Stage", ["Idea", "MVP", "Early Traction", "Growth", "Scale"], help="Idea = pre-product. MVP = building. Early Traction = first users. Growth/Scale = scaling revenue. Drives the financial assumptions.")
+            company_size = st.selectbox("Company Size", ["Pre-revenue", "$0-100k", "$100k-1M", "$1M-10M", "$10M+"], help="Annual revenue range.")
         with c3:
             st.markdown('<div class="swiss-label">CONTEXT</div>', unsafe_allow_html=True)
-            target_customer = st.text_input("Target Customer", placeholder="B2B SaaS 50-500")
-            business_model = st.selectbox("Business Model", ["Subscription", "Marketplace", "E-commerce", "Freemium", "License", "Services", "Other"])
-            current_revenue = st.number_input("Current Revenue ($)", min_value=0, value=0, step=1000)
+            st.caption("Who do you sell to?")
+            target_customer = st.text_input("Target Customer", placeholder="B2B SaaS 50-500", help="Your ideal customer, e.g. 'B2B SaaS teams of 50-500'.")
+            business_model = st.selectbox("Business Model", ["Subscription", "Marketplace", "E-commerce", "Freemium", "License", "Services", "Other"], help="How you make money.")
+            current_revenue = st.number_input("Current Monthly Revenue ($)", min_value=0, value=0, step=1000, help="Enter 0 if pre-revenue — we'll model a stage-appropriate baseline.")
 
         st.markdown("<hr>", unsafe_allow_html=True)
+
         c4, c5 = st.columns(2)
         with c4:
             st.markdown('<div class="swiss-label">STRATEGY</div>', unsafe_allow_html=True)
-            differentiation = st.text_area("Key Differentiation", placeholder="What makes you unique?", height=68)
-            competitors = st.text_area("Competitor URLs", placeholder="https://comp1.com, https://comp2.com", height=68)
+            st.caption("Why do you win?")
+            differentiation = st.text_area("Key Differentiation", placeholder="What makes you unique?", height=68, help="Your unfair advantage — tech, distribution, price, data. Quoted in the strategy section.")
+            competitors = st.text_area("Competitor URLs", placeholder="https://comp1.com, https://comp2.com", height=68, help="Comma-separated. Used for the competitive landscape section.")
         with c5:
             st.markdown('<div class="swiss-label">GO-TO-MARKET</div>', unsafe_allow_html=True)
-            funding_status = st.selectbox("Funding Status", ["Bootstrapped", "Pre-Seed", "Seed", "Series A", "Series B+"])
-            gtm_preference = st.selectbox("GTM Preference", ["No preference", "Content & SEO", "Paid Ads", "Outbound Sales", "Partnerships", "Product-Led Growth"])
-            geography = st.text_input("Target Geography", value="US")
+            st.caption("How do you reach customers?")
+            funding_status = st.selectbox("Funding Status", ["Bootstrapped", "Pre-Seed", "Seed", "Series A", "Series B+"], help="Sets the modeled starting cash for runway calculations.")
+            gtm_preference = st.selectbox("Preferred GTM Channel", ["No preference", "Content & SEO", "Paid Ads", "Outbound Sales", "Partnerships", "Product-Led Growth"], help="We'll prioritize this channel in the go-to-market plan.")
+            geography = st.text_input("Target Geography", value="US", help="Primary market, e.g. US, EU, Global.")
 
         st.markdown("<hr>", unsafe_allow_html=True)
-        submitted = st.form_submit_button("GENERATE PLAN", type="primary", use_container_width=True)
+        st.markdown('<div class="swiss-form-hint">Fields marked with a tooltip give guidance — hover the (?) icons. Everything can be changed by regenerating later.</div>', unsafe_allow_html=True)
+        submitted = st.form_submit_button("GENERATE PLAN →", type="primary", use_container_width=True)
 
         if submitted:
             if not name:
@@ -624,27 +700,64 @@ def create_plan_page():
 
             progress_bar.empty()
             status_text.empty()
-            st.markdown(f"""<div style="border:1px solid #000;padding:24px;margin-top:16px;"><div style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#737373;margin-bottom:8px;">PLAN GENERATED</div><div style="font-size:1.2rem;font-weight:700;letter-spacing:-0.03em;">Plan {plan_result['id']} created successfully.</div></div>""", unsafe_allow_html=True)
+
+            # Rich confirmation: what was generated + headline numbers + next step.
+            km = financial_data["key_metrics"]
+            runway_disp = "36+ mo" if km.get("runway_months") is None else f"{km.get('runway_months')} mo"
+            be_disp = f"Mo {km.get('break_even_month')}" if km.get("break_even_month") else "--"
+            st.markdown(
+                f"""<div style="border:1px solid #000;padding:24px;margin-top:16px;">
+                <div style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#737373;margin-bottom:8px;">PLAN GENERATED</div>
+                <div style="font-size:1.2rem;font-weight:700;letter-spacing:-0.03em;">{plan_data['name']} is ready.</div>
+                <div style="font-size:0.85rem;color:#525252;margin-top:6px;">Executive summary, 36-month financial model, market analysis, competitor landscape and strategy &amp; OKRs have been generated.</div>
+                <div style="display:flex;gap:24px;margin-top:16px;font-size:0.85rem;color:#000;">
+                  <div><span style="font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:#737373;">YEAR-1 REVENUE</span><br/><b>${sum(r['revenue'] for r in financial_data['pnl'][:12]):,.0f}</b></div>
+                  <div><span style="font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:#737373;">RUNWAY</span><br/><b>{runway_disp}</b></div>
+                  <div><span style="font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:#737373;">BREAK-EVEN</span><br/><b>{be_disp}</b></div>
+                </div>
+                </div>""",
+                unsafe_allow_html=True,
+            )
+            st.success("✅ Plan generated — open it from the **Plan Details** page (or the Dashboard) to review and export.")
 
 
 def dashboard_page():
     swiss_section("02", "PLANS")
+    st.markdown(
+        '''<p class="swiss-body-text">All plans generated in this session. Open a plan to review its financials,
+        market analysis and strategy — then export it as PDF, DOCX or Excel.</p>''',
+        unsafe_allow_html=True,
+    )
     st.markdown("<hr>", unsafe_allow_html=True)
     plans = st.session_state.plans
     if not plans:
-        st.markdown("""<div style="text-align:center;padding:80px 0;"><div style="font-size:9px;letter-spacing:0.25em;text-transform:uppercase;color:#A3A3A3;margin-bottom:12px;">EMPTY</div><div style="font-size:1.1rem;font-weight:600;color:#000;">No plans yet. Create your first plan.</div></div>""", unsafe_allow_html=True)
+        st.markdown(
+            '''<div style="border:1px dashed #A3A3A3;padding:56px 24px;text-align:center;">
+            <div style="font-size:9px;letter-spacing:0.25em;text-transform:uppercase;color:#A3A3A3;margin-bottom:12px;">EMPTY</div>
+            <div style="font-size:1.1rem;font-weight:600;color:#000;">No plans yet.</div>
+            <div style="font-size:0.85rem;color:#737373;margin-top:6px;">Head to <b>Create Plan</b> in the sidebar — it takes about a minute.</div>
+            </div>''',
+            unsafe_allow_html=True,
+        )
         return
 
-    for plan in plans:
-        c1, c2, c3, c4 = st.columns([3, 1.5, 1.5, 1])
+    st.markdown(f'<div class="swiss-label">{len(plans)} PLAN{"S" if len(plans) != 1 else ""} · NEWEST FIRST</div>', unsafe_allow_html=True)
+    for plan in reversed(plans):
+        fin = plan.get("financial_projections", {}).get("key_metrics", {})
+        runway_disp = "36+ mo" if fin.get("runway_months") is None else f"{fin.get('runway_months')} mo"
+        c1, c2, c3, c4, c5 = st.columns([3, 1.3, 1.3, 1, 0.9])
         with c1:
-            st.markdown(f"""<div style="font-size:1.1rem;font-weight:700;letter-spacing:-0.02em;">{plan['plan']['name']}</div><div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#737373;margin-top:4px;">{plan['plan']['frequency'].title()}  /  {plan['plan'].get('industry', '--')}  /  {plan['status'].title()}</div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div style="font-size:1.05rem;font-weight:700;letter-spacing:-0.02em;">{plan['plan']['name']}</div><div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#737373;margin-top:4px;">{plan['plan']['frequency'].title()}  /  {plan['plan'].get('industry', '--')}  /  {plan['status'].title()}</div>""", unsafe_allow_html=True)
         with c2:
             st.markdown(swiss_metric_card("Industry", plan['plan'].get("industry", "N/A")), unsafe_allow_html=True)
         with c3:
-            st.markdown(swiss_metric_card("Status", plan["status"].title()), unsafe_allow_html=True)
+            st.markdown(swiss_metric_card("Runway", runway_disp), unsafe_allow_html=True)
         with c4:
-            if st.button("VIEW", key=f"view_{plan['id']}", use_container_width=True):
+            created = plan.get("created_at", "")
+            created_disp = created[:10] if created else "--"
+            st.markdown(swiss_metric_card("Created", created_disp), unsafe_allow_html=True)
+        with c5:
+            if st.button("VIEW →", key=f"view_{plan['id']}", use_container_width=True, type="primary"):
                 st.session_state.current_plan_id = plan["id"]
                 st.rerun()
         st.markdown("<hr>", unsafe_allow_html=True)
@@ -653,8 +766,18 @@ def dashboard_page():
 def plan_details_page():
     plan_id = st.session_state.current_plan_id
     if not plan_id:
-        st.markdown("""<div style="text-align:center;padding:80px 0;"><div style="font-size:9px;letter-spacing:0.25em;text-transform:uppercase;color:#A3A3A3;margin-bottom:12px;">NO PLAN SELECTED</div><div style="font-size:1.1rem;font-weight:600;color:#000;">Select a plan from Dashboard.</div></div>""", unsafe_allow_html=True)
-        return
+        if st.session_state.plans:
+            plan_id = st.session_state.plans[-1]["id"]  # open the most recent plan
+        else:
+            st.markdown(
+                '''<div style="border:1px dashed #A3A3A3;padding:56px 24px;text-align:center;">
+                <div style="font-size:9px;letter-spacing:0.25em;text-transform:uppercase;color:#A3A3A3;margin-bottom:12px;">NO PLAN SELECTED</div>
+                <div style="font-size:1.1rem;font-weight:600;color:#000;">Nothing to show yet.</div>
+                <div style="font-size:0.85rem;color:#737373;margin-top:6px;">Generate a plan first, or open one from the Dashboard.</div>
+                </div>''',
+                unsafe_allow_html=True,
+            )
+            return
 
     plan = next((p for p in st.session_state.plans if p["id"] == plan_id), None)
     if not plan:
@@ -662,15 +785,32 @@ def plan_details_page():
         return
 
     swiss_section("03", plan["plan"]["name"].upper())
-    st.markdown(f"""<div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#737373;margin-bottom:2rem;">{plan['plan']['frequency'].title()}  /  {plan['plan'].get('industry', '--')}  /  {plan['status'].title()}</div>""", unsafe_allow_html=True)
+    st.markdown(f"""<div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#737373;margin-bottom:1.2rem;">{plan['plan']['frequency'].title()}  /  {plan['plan'].get('industry', '--')}  /  {plan['status'].title()}  /  CREATED {plan.get('created_at', '--')[:10]}</div>""", unsafe_allow_html=True)
     st.markdown("<hr>", unsafe_allow_html=True)
 
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["OVERVIEW", "FINANCIALS", "MARKET", "COMPETITORS", "STRATEGY"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📋 OVERVIEW", "💰 FINANCIALS", "🌍 MARKET", "⚔ COMPETITORS", "🎯 STRATEGY"])
     with tab1: overview_tab(plan)
     with tab2: financials_tab(plan)
     with tab3: market_tab(plan)
     with tab4: competitors_tab(plan)
     with tab5: strategy_tab(plan)
+
+
+def format_money(v, compact=True):
+    """Compact human-readable money: $1.2M, $850k, $940."""
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return "--"
+    v = abs(v) if v != 0 else v
+    if compact:
+        if abs(v) >= 1_000_000_000:
+            return f"${v / 1_000_000_000:.1f}B"
+        if abs(v) >= 1_000_000:
+            return f"${v / 1_000_000:.1f}M"
+        if abs(v) >= 1_000:
+            return f"${v / 1_000:.0f}k"
+    return f"${v:,.0f}"
 
 
 def overview_tab(plan):
@@ -685,13 +825,39 @@ def overview_tab(plan):
     key_metrics = fin.get("key_metrics", {})
 
     st.markdown("<hr>", unsafe_allow_html=True)
-    st.markdown('<div class="swiss-label">KEY METRICS</div>', unsafe_allow_html=True)
+    st.markdown('<div class="swiss-label">KEY METRICS — WHAT THE MODEL PREDICTS</div>', unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
     runway_months = key_metrics.get("runway_months")
-    with c1: st.markdown(swiss_metric_card("Revenue Growth", f"{assumptions.get('revenue_growth_rate', 0) * 100:.0f}%"), unsafe_allow_html=True)
-    with c2: st.markdown(swiss_metric_card("Gross Margin", f"{assumptions.get('gross_margin', 0) * 100:.0f}%"), unsafe_allow_html=True)
-    with c3: st.markdown(swiss_metric_card("Runway", "36+ mo" if runway_months is None else f"{runway_months} mo"), unsafe_allow_html=True)
-    with c4: st.markdown(swiss_metric_card("Break-even", f"Mo {key_metrics.get('break_even_month') or '--'}"), unsafe_allow_html=True)
+    runway_help = (
+        "Months until modeled cash runs out. '36+' means cash never runs out in the 3-year model."
+        if runway_months is not None
+        else "The model never runs out of cash within the 3-year horizon."
+    )
+    be_val = key_metrics.get("break_even_month")
+    with c1:
+        st.markdown(swiss_metric_card("Revenue Growth", f"{assumptions.get('revenue_growth_rate', 0) * 100:.0f}% /yr"), unsafe_allow_html=True)
+        st.caption("Monthly revenue growth the model assumes, annualized.")
+    with c2:
+        st.markdown(swiss_metric_card("Gross Margin", f"{assumptions.get('gross_margin', 0) * 100:.0f}%"), unsafe_allow_html=True)
+        st.caption("Share of revenue left after cost of goods sold.")
+    with c3:
+        st.markdown(swiss_metric_card("Runway", "36+ mo" if runway_months is None else f"{runway_months} mo"), unsafe_allow_html=True)
+        st.caption(runway_help)
+    with c4:
+        st.markdown(swiss_metric_card("Break-even", f"Mo {be_val}" if be_val else "Not in 36 mo"), unsafe_allow_html=True)
+        st.caption("First month the model turns profitable." if be_val else "Model doesn't turn a monthly profit within 3 years — consider cutting costs or raising funding.")
+
+    # Assumption chips so users can see what drives the numbers
+    if assumptions:
+        st.caption(
+            "Assumptions: "
+            + " · ".join([
+                f"OpEx {assumptions.get('operating_expense_ratio', 0) * 100:.0f}% of revenue",
+                f"Tax {assumptions.get('tax_rate', 0) * 100:.0f}%",
+                f"Churn {assumptions.get('churn_rate', 0) * 100:.0f}%/mo",
+                f"CAC {format_money(assumptions.get('cac', 0))}",
+            ])
+        )
 
     if plan.get("strategy", {}).get("okrs"):
         st.markdown("<hr>", unsafe_allow_html=True)
@@ -707,48 +873,128 @@ def financials_tab(plan):
     balance = fin.get("balance_sheet", [])
     assumptions = fin.get("assumptions", {})
 
-    def safe_chart(df, x_col, y_cols):
-        if df.empty or x_col not in df.columns: return False
+    def safe_chart(df, x_col, y_cols, label_map=None):
+        if df.empty or x_col not in df.columns:
+            return False
         available_y = [c for c in y_cols if c in df.columns]
-        if not available_y: return False
-        try: st.line_chart(df.set_index(x_col)[available_y]); return True
-        except: return False
+        if not available_y:
+            return False
+        try:
+            chart_df = df.set_index(x_col)[available_y]
+            if label_map:
+                chart_df = chart_df.rename(columns={c: label_map.get(c, c) for c in available_y})
+            st.line_chart(chart_df)
+            return True
+        except Exception:
+            return False
 
     if pnl:
         df = pd.DataFrame(pnl)
-        st.markdown('<div class="swiss-label">P&L PROJECTION</div>', unsafe_allow_html=True)
-        safe_chart(df, "period", ["revenue", "gross_profit", "ebitda", "net_income"])
+
+        # Headline row: totals users care about most
+        km = fin.get("key_metrics", {})
+        year1 = sum(r.get("revenue", 0) for r in pnl[:12])
+        year3 = sum(r.get("revenue", 0) for r in pnl[24:36])
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            st.markdown(swiss_metric_card("Year-1 Revenue", format_money(year1)), unsafe_allow_html=True)
+            st.caption("Sum of modeled monthly revenue, months 1-12.")
+        with c2:
+            st.markdown(swiss_metric_card("Year-3 Revenue", format_money(year3)), unsafe_allow_html=True)
+            st.caption("Modeled revenue in year 3 at current assumptions.")
+        with c3:
+            runway_v = km.get("runway_months")
+            st.markdown(swiss_metric_card("Runway", "36+ mo" if runway_v is None else f"{runway_v} mo"), unsafe_allow_html=True)
+            st.caption("Months until modeled cash runs out.")
+        with c4:
+            be_v = km.get("break_even_month")
+            st.markdown(swiss_metric_card("Break-even", f"Mo {be_v}" if be_v else "Not in 36 mo"), unsafe_allow_html=True)
+            st.caption("First profitable month.")
+
+        # Break-even / runway callout for instant readability
+        if be_v:
+            st.success(f"✅ The model turns profitable in month {be_v}.")
+        elif km.get("runway_months") is not None:
+            st.warning(f"⚠ Cash runs out around month {km['runway_months']} at these assumptions. Cut costs, grow faster, or raise funding.")
+        else:
+            st.info("ℹ Cash holds through the 3-year horizon, but the model never turns a monthly profit — revisit assumptions.")
+
         st.markdown("<hr>", unsafe_allow_html=True)
-        st.markdown('<div class="swiss-label">CASH FLOW</div>', unsafe_allow_html=True)
+        st.markdown('<div class="swiss-label">P&L PROJECTION — REVENUE, PROFIT & MARGINS</div>', unsafe_allow_html=True)
+        safe_chart(df, "period", ["revenue", "gross_profit", "ebitda", "net_income"],
+                   label_map={"revenue": "Revenue", "gross_profit": "Gross Profit", "ebitda": "EBITDA", "net_income": "Net Income"})
+        st.markdown("<hr>", unsafe_allow_html=True)
+        st.markdown('<div class="swiss-label">CASH FLOW — CAN WE PAY THE BILLS?</div>', unsafe_allow_html=True)
         df_cf = pd.DataFrame(cashflow)
-        safe_chart(df_cf, "period", ["operating", "investing", "net_cash_flow"])
+        safe_chart(df_cf, "period", ["operating", "investing", "net_cash_flow", "cash_balance"],
+                   label_map={"operating": "Operating", "investing": "Investing", "net_cash_flow": "Net Cash Flow", "cash_balance": "Cash Balance"})
         st.markdown("<hr>", unsafe_allow_html=True)
-        st.markdown('<div class="swiss-label">BALANCE SHEET</div>', unsafe_allow_html=True)
+        st.markdown('<div class="swiss-label">BALANCE SHEET — WHAT WE OWN & OWE</div>', unsafe_allow_html=True)
         df_bs = pd.DataFrame(balance)
-        safe_chart(df_bs, "period", ["total_assets", "total_liabilities", "equity"])
+        safe_chart(df_bs, "period", ["total_assets", "total_liabilities", "equity"],
+                   label_map={"total_assets": "Total Assets", "total_liabilities": "Total Liabilities", "equity": "Equity"})
         st.markdown("<hr>", unsafe_allow_html=True)
-        st.markdown('<div class="swiss-label">P&L TABLE</div>', unsafe_allow_html=True)
+        st.markdown('<div class="swiss-label">P&L TABLE — ALL 36 MONTHS</div>', unsafe_allow_html=True)
         table_cols = ["period", "revenue", "cogs", "gross_profit", "operating_expenses", "ebitda", "net_income"]
+        col_labels = {"period": "Period", "revenue": "Revenue ($)", "cogs": "COGS ($)", "gross_profit": "Gross Profit ($)", "operating_expenses": "OpEx ($)", "ebitda": "EBITDA ($)", "net_income": "Net Income ($)"}
         available_cols = [c for c in table_cols if c in df.columns]
-        if available_cols: st.dataframe(df[available_cols], use_container_width=True)
+        if available_cols:
+            st.dataframe(
+                df[available_cols].style.format({c: (lambda v: f"{v:,.0f}") for c in available_cols if c != "period"}),
+                use_container_width=True,
+                hide_index=True,
+            )
     else:
         st.info("No financial projection data available")
 
     if assumptions:
         st.markdown("<hr>", unsafe_allow_html=True)
-        st.markdown('<div class="swiss-label">ASSUMPTIONS</div>', unsafe_allow_html=True)
-        st.json(assumptions)
+        st.markdown('<div class="swiss-label">ASSUMPTIONS BEHIND THE MODEL</div>', unsafe_allow_html=True)
+        st.caption("These drive every number above. Regenerate the plan with different inputs to stress-test them.")
+        pretty = {
+            "revenue_growth_rate": "Revenue growth (%/yr)",
+            "gross_margin": "Gross margin (%)",
+            "operating_expense_ratio": "OpEx ratio (% of revenue)",
+            "tax_rate": "Tax rate (%)",
+            "interest_rate": "Interest rate (%)",
+            "depreciation_rate": "Depreciation (%/yr)",
+            "working_capital_days": "Working capital (days)",
+            "capex_percentage_of_revenue": "CapEx (% of revenue)",
+            "churn_rate": "Churn (%/mo)",
+            "cac": "CAC ($)",
+        }
+        pct_keys = {"revenue_growth_rate", "gross_margin", "operating_expense_ratio", "tax_rate", "interest_rate", "depreciation_rate", "capex_percentage_of_revenue", "churn_rate"}
+        rows = []
+        for k, v in assumptions.items():
+            label = pretty.get(k, k.replace("_", " ").title())
+            if k in pct_keys:
+                disp = f"{v * 100:.0f}%"
+            elif k == "cac":
+                disp = format_money(v)
+            else:
+                disp = f"{v:g}"
+            rows.append({"Assumption": label, "Value": disp})
+        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
 
 def market_tab(plan):
     market = plan.get("market_analysis", {})
-    if not market: st.info("No market data"); return
+    if not market:
+        st.info("No market data was generated for this plan.")
+        return
+    st.markdown('<div class="swiss-label">MARKET SIZE — HOW BIG IS THE PRIZE?</div>', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
-    with c1: st.markdown(swiss_metric_card("TAM", f"${market.get('tam', 0):,.0f}"), unsafe_allow_html=True)
-    with c2: st.markdown(swiss_metric_card("SAM", f"${market.get('sam', 0):,.0f}"), unsafe_allow_html=True)
-    with c3: st.markdown(swiss_metric_card("SOM", f"${market.get('som', 0):,.0f}"), unsafe_allow_html=True)
+    with c1:
+        st.markdown(swiss_metric_card("TAM", format_money(market.get("tam", 0))), unsafe_allow_html=True)
+        st.caption("Total addressable market — everyone who could theoretically buy.")
+    with c2:
+        st.markdown(swiss_metric_card("SAM", format_money(market.get("sam", 0))), unsafe_allow_html=True)
+        st.caption("Serviceable market — the segment we can actually reach.")
+    with c3:
+        st.markdown(swiss_metric_card("SOM", format_money(market.get("som", 0))), unsafe_allow_html=True)
+        st.caption("Obtainable market — realistic capture in 3 years.")
     st.markdown("<hr>", unsafe_allow_html=True)
-    st.markdown(swiss_metric_card("Market Growth", f"{market.get('market_growth_rate', 0) * 100:.1f}%"), unsafe_allow_html=True)
+    st.markdown(swiss_metric_card("Market Growth", f"{market.get('market_growth_rate', 0) * 100:.1f}% /yr"), unsafe_allow_html=True)
     if market.get("key_trends"):
         st.markdown("<hr>", unsafe_allow_html=True)
         st.markdown('<div class="swiss-label">KEY TRENDS</div>', unsafe_allow_html=True)
@@ -763,54 +1009,96 @@ def competitors_tab(plan):
     comp = plan.get("competitor_analysis", {})
     competitors = comp.get("competitors", [])
     matrix = comp.get("competitive_matrix", {})
-    if not competitors: st.info("No competitor data"); return
-    st.markdown('<div class="swiss-label">COMPETITOR PROFILES</div>', unsafe_allow_html=True)
+    if not competitors:
+        st.info("No competitor data was generated for this plan.")
+        return
+    st.markdown('<div class="swiss-label">WHO YOU\'RE UP AGAINST</div>', unsafe_allow_html=True)
+    st.caption("Expand a competitor to see their pricing, features and positioning.")
     for c in competitors:
-        with st.expander(c["name"]):
+        with st.expander(f"**{c['name']}** — {c.get('positioning', c.get('description', ''))}"):
             a, b = st.columns(2)
             with a:
                 st.markdown(f"**Website:** {c.get('website', '--')}")
                 st.markdown(f"**Pricing:** {c.get('pricing_model', '--')}")
                 st.markdown(f"**Stage:** {c.get('funding_stage', '--')}")
+                if c.get("employee_count"):
+                    st.markdown(f"**Employees:** {c['employee_count']}")
             with b:
                 st.markdown("**Key Features**")
-                for f in c.get("key_features", [])[:5]: st.markdown(f"-- {f}")
+                for f in c.get("key_features", [])[:5]:
+                    st.markdown(f"- {f}")
     if matrix.get("criteria") and matrix.get("scores"):
         st.markdown("<hr>", unsafe_allow_html=True)
-        st.markdown('<div class="swiss-label">COMPETITIVE MATRIX</div>', unsafe_allow_html=True)
+        st.markdown('<div class="swiss-label">HEAD-TO-HEAD MATRIX — 1 (WEAK) TO 5 (STRONG)</div>', unsafe_allow_html=True)
+        st.caption("How we score against each competitor on the factors buyers care about.")
         st.dataframe(pd.DataFrame(matrix["scores"], index=matrix["criteria"]).T, use_container_width=True)
+    if comp.get("competitive_advantages"):
+        st.markdown("<hr>", unsafe_allow_html=True)
+        st.markdown('<div class="swiss-label">OUR EDGE</div>', unsafe_allow_html=True)
+        for adv in comp["competitive_advantages"]:
+            st.markdown(f"✔ {adv}")
 
 
 def strategy_tab(plan):
     strat = plan.get("strategy", {})
-    if not strat: st.info("No strategy data"); return
+    if not strat:
+        st.info("No strategy data was generated for this plan.")
+        return
     swot = strat.get("swot", {})
     if swot:
-        st.markdown('<div class="swiss-label">SWOT ANALYSIS</div>', unsafe_allow_html=True)
+        st.markdown('<div class="swiss-label">SWOT — WHERE WE STAND</div>', unsafe_allow_html=True)
         c1, c2 = st.columns(2)
         with c1:
-            st.markdown("**Strengths**")
-            for s in swot.get("strengths", []): st.markdown(f"-- {s}")
-            st.markdown("**Weaknesses**")
-            for w in swot.get("weaknesses", []): st.markdown(f"-- {w}")
+            st.markdown("**💪 Strengths** — internal advantages")
+            for s in swot.get("strengths", []):
+                st.markdown(f"- {s}")
+            st.markdown("**⚠ Weaknesses** — internal gaps to fix")
+            for w in swot.get("weaknesses", []):
+                st.markdown(f"- {w}")
         with c2:
-            st.markdown("**Opportunities**")
-            for o in swot.get("opportunities", []): st.markdown(f"-- {o}")
-            st.markdown("**Threats**")
-            for t in swot.get("threats", []): st.markdown(f"-- {t}")
+            st.markdown("**🚀 Opportunities** — external tailwinds")
+            for o in swot.get("opportunities", []):
+                st.markdown(f"- {o}")
+            st.markdown("**🛡 Threats** — external risks to watch")
+            for t in swot.get("threats", []):
+                st.markdown(f"- {t}")
     gtm = strat.get("gtm_strategy", {})
     if gtm:
         st.markdown("<hr>", unsafe_allow_html=True)
-        st.markdown('<div class="swiss-label">GO-TO-MARKET</div>', unsafe_allow_html=True)
-        if gtm.get("value_proposition"): st.markdown(f"**Value Proposition:** {gtm['value_proposition']}")
+        st.markdown('<div class="swiss-label">GO-TO-MARKET — HOW WE\'LL WIN CUSTOMERS</div>', unsafe_allow_html=True)
+        if gtm.get("value_proposition"):
+            st.markdown(f"**Value proposition:** {gtm['value_proposition']}")
         if gtm.get("channels"):
-            for ch in gtm["channels"]: st.markdown(f"-- {ch['channel']}  (P{ch['priority']}, {ch.get('budget_allocation', 0) * 100:.0f}%)")
+            st.caption("Channels ranked by budget share.")
+            rows = [
+                {
+                    "Channel": ch.get("channel", "--"),
+                    "Priority": ch.get("priority", "--").title(),
+                    "Budget Share": f"{ch.get('budget_allocation', 0) * 100:.0f}%",
+                }
+                for ch in gtm["channels"]
+            ]
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
     if strat.get("okrs"):
         st.markdown("<hr>", unsafe_allow_html=True)
-        st.markdown('<div class="swiss-label">OKRs</div>', unsafe_allow_html=True)
+        st.markdown('<div class="swiss-label">OKRs — WHAT WE\'LL MEASURE</div>', unsafe_allow_html=True)
         for okr in strat["okrs"]:
-            st.markdown(f"**{okr['objective']}**")
-            for kr in okr.get("key_results", []): st.markdown(f"-- {kr['metric']}: {kr['target']} {kr.get('unit', '')}")
+            st.markdown(f"**{okr['objective']}**  ·  Owner: {okr.get('owner', '--')}  ·  {okr.get('timeline', '')}")
+            for kr in okr.get("key_results", []):
+                st.markdown(f"- {kr['metric']}: **{kr['target']}** {kr.get('unit', '')} (from {kr.get('current', '--')})")
+    if strat.get("risk_assessment"):
+        st.markdown("<hr>", unsafe_allow_html=True)
+        st.markdown('<div class="swiss-label">TOP RISKS & MITIGATIONS</div>', unsafe_allow_html=True)
+        rows = [
+            {
+                "Risk": r.get("risk", "--"),
+                "Likelihood": r.get("likelihood", "--").title(),
+                "Impact": r.get("impact", "--").title(),
+                "Mitigation": r.get("mitigation", "--"),
+            }
+            for r in strat["risk_assessment"]
+        ]
+        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
 
 if __name__ == "__main__":
