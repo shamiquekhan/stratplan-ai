@@ -51,3 +51,8 @@ backend/ml/
 
 # Docker
 docker-compose.override.yml
+
+# Local plan store (runtime artifact, never commit)
+plans_store.json
+plans_store.json.tmp
+plans_store.json.corrupt
