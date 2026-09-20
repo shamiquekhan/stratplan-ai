@@ -304,7 +304,7 @@ code, .stCode { font-family: 'JetBrains Mono', monospace !important; font-size: 
 # --- FINANCIAL ENGINE (embedded) ---
 
 class FinancialEngine:
-    def build_projections(self, assumptions: Dict[str, float], starting_revenue: float = 0, months: int = 36) -> Dict[str, Any]:
+    def build_projections(self, assumptions: Dict[str, float], starting_revenue: float = 0, months: int = 36, user_inputs: Dict = None) -> Dict[str, Any]:
         revenue_growth = assumptions.get("revenue_growth_rate", 0.15)
         gross_margin = assumptions.get("gross_margin", 0.60)
         opex_ratio = assumptions.get("operating_expense_ratio", 0.50)
@@ -317,11 +317,15 @@ class FinancialEngine:
         monthly_growth = (1 + revenue_growth) ** (1/12) - 1
 
         pnl, cashflow, balance_sheet = [], [], []
-        cash_balance = starting_revenue * 0.5
+        # Seed cash from the funding context so pre-revenue models don't start
+        # nearly broke and show a misleading negative runway from month one.
+        funding_cash = {"bootstrapped": 50000, "pre_seed": 150000, "seed": 1000000, "series_a": 5000000, "series_b+": 15000000}
+        starting_cash = funding_cash.get((user_inputs or {}).get("funding_status", "bootstrapped"), 50000)
+        cash_balance = starting_cash
         current_assets = cash_balance
         fixed_assets = starting_revenue * 2
         current_liabilities = 0
-        longterm_liabilities = starting_revenue * 0.5
+        longterm_liabilities = starting_cash * 0.5
         equity = current_assets + fixed_assets - current_liabilities - longterm_liabilities
         retained_earnings = 0
 
@@ -357,15 +361,20 @@ class FinancialEngine:
             balance_sheet.append({"period": period_label, "current_assets": round(current_assets, 2), "fixed_assets": round(fixed_assets, 2), "total_assets": round(total_assets, 2), "current_liabilities": round(current_liabilities, 2), "longterm_liabilities": round(longterm_liabilities, 2), "total_liabilities": round(current_liabilities + longterm_liabilities, 2), "equity": round(equity, 2)})
 
         final_cash = cashflow[-1]["cash_balance"]
-        monthly_burn = abs(min(cf["net_cash_flow"] for cf in cashflow))
-        runway = final_cash / monthly_burn if monthly_burn > 0 else 0
+        # Runway = the month cash runs out. If cash never goes negative within
+        # the horizon, the company is funded for the full period (None -> "36+").
+        runway = None
+        for i, cf in enumerate(cashflow):
+            if cf["cash_balance"] < 0:
+                runway = i + 1
+                break
         break_even_month = None
         for i, row in enumerate(pnl):
             if row["net_income"] > 0:
                 break_even_month = i + 1
                 break
 
-        return {"assumptions": assumptions, "pnl": pnl, "cash_flow": cashflow, "balance_sheet": balance_sheet, "key_metrics": {"runway_months": round(runway, 1), "break_even_month": break_even_month, "ltv_cac_ratio": 3.0, "payback_period_months": 12, "final_cash": round(final_cash, 2), "total_revenue_3yr": round(sum(r["revenue"] for r in pnl), 2)}}
+        return {"assumptions": assumptions, "pnl": pnl, "cash_flow": cashflow, "balance_sheet": balance_sheet, "key_metrics": {"runway_months": round(runway, 1) if runway is not None else None, "break_even_month": break_even_month, "ltv_cac_ratio": 3.0, "payback_period_months": 12, "final_cash": round(final_cash, 2), "total_revenue_3yr": round(sum(r["revenue"] for r in pnl), 2)}}
 
     def _get_period_label(self, month: int) -> str:
         if month % 12 == 0: return f"Year {month // 12}"
@@ -490,7 +499,7 @@ def generate_strategy(plan: Dict, user_inputs: Dict) -> Dict:
 
 
 def get_default_assumptions(plan: Dict, user_inputs: Dict) -> Dict[str, float]:
-    stage = user_inputs.get("stage", "early")
+    stage = user_inputs.get("stage", "idea")
     stage_defaults = {
         "idea": {"revenue_growth_rate": 0.25, "gross_margin": 0.55, "operating_expense_ratio": 0.70},
         "mvp": {"revenue_growth_rate": 0.35, "gross_margin": 0.60, "operating_expense_ratio": 0.60},
@@ -498,7 +507,9 @@ def get_default_assumptions(plan: Dict, user_inputs: Dict) -> Dict[str, float]:
         "growth": {"revenue_growth_rate": 0.30, "gross_margin": 0.70, "operating_expense_ratio": 0.40},
         "scale": {"revenue_growth_rate": 0.20, "gross_margin": 0.75, "operating_expense_ratio": 0.35},
     }
-    s = stage_defaults.get(stage, stage_defaults["early"])
+    # .get() evaluates its default eagerly, so indexing stage_defaults here would raise
+    # KeyError even when `stage` is valid. Use a lookup with a safe fallback instead.
+    s = stage_defaults.get(stage) or stage_defaults["idea"]
     return {"revenue_growth_rate": s["revenue_growth_rate"], "gross_margin": s["gross_margin"], "operating_expense_ratio": s["operating_expense_ratio"], "tax_rate": 0.21, "interest_rate": 0.05, "depreciation_rate": 0.10, "working_capital_days": 30, "capex_percentage_of_revenue": 0.05, "churn_rate": 0.05, "cac": 1000}
 
 
@@ -590,7 +601,11 @@ def create_plan_page():
 
             engine = FinancialEngine()
             assumptions = get_default_assumptions(plan_data, user_inputs)
-            financial_data = engine.build_projections(assumptions, user_inputs.get("current_revenue", 0))
+            # Pre-revenue companies start from a modeled stage baseline so the
+            # projections and charts are meaningful instead of a flat $0 line.
+            stage_baseline = {"idea": 10000, "mvp": 10000, "early_traction": 25000, "growth": 60000, "scale": 150000}
+            starting_revenue = user_inputs.get("current_revenue", 0) or stage_baseline.get(user_inputs.get("stage", "idea"), 10000)
+            financial_data = engine.build_projections(assumptions, starting_revenue, user_inputs=user_inputs)
 
             plan_result = {
                 "id": len(st.session_state.plans) + 1,
@@ -672,10 +687,11 @@ def overview_tab(plan):
     st.markdown("<hr>", unsafe_allow_html=True)
     st.markdown('<div class="swiss-label">KEY METRICS</div>', unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
+    runway_months = key_metrics.get("runway_months")
     with c1: st.markdown(swiss_metric_card("Revenue Growth", f"{assumptions.get('revenue_growth_rate', 0) * 100:.0f}%"), unsafe_allow_html=True)
     with c2: st.markdown(swiss_metric_card("Gross Margin", f"{assumptions.get('gross_margin', 0) * 100:.0f}%"), unsafe_allow_html=True)
-    with c3: st.markdown(swiss_metric_card("Runway", f"{key_metrics.get('runway_months', 0)} mo"), unsafe_allow_html=True)
-    with c4: st.markdown(swiss_metric_card("Break-even", f"Mo {key_metrics.get('break_even_month', '--')}"), unsafe_allow_html=True)
+    with c3: st.markdown(swiss_metric_card("Runway", "36+ mo" if runway_months is None else f"{runway_months} mo"), unsafe_allow_html=True)
+    with c4: st.markdown(swiss_metric_card("Break-even", f"Mo {key_metrics.get('break_even_month') or '--'}"), unsafe_allow_html=True)
 
     if plan.get("strategy", {}).get("okrs"):
         st.markdown("<hr>", unsafe_allow_html=True)
