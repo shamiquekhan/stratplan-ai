@@ -335,6 +335,80 @@ div[data-baseweb="textarea"] > label,
 
 .stDataFrame { border: 1px solid var(--black) !important; border-radius: 0 !important; }
 
+/* ===== READABILITY SAFETY NET ======================================
+   Scoped to the main content area ONLY so the black sidebar keeps its
+   white text. Guarantees dark text on the white background even if
+   Streamlit updates its base theme or a rule misses. ================= */
+
+[data-testid="stMain"] { background: var(--white) !important; }
+
+[data-testid="stMain"] p,
+[data-testid="stMain"] li {
+    color: var(--gray-600) !important;
+}
+
+[data-testid="stMain"] h1,
+[data-testid="stMain"] h2,
+[data-testid="stMain"] h3,
+[data-testid="stMain"] h4,
+[data-testid="stMain"] h5,
+[data-testid="stMain"] h6 {
+    color: var(--black) !important;
+}
+
+[data-testid="stMain"] [data-testid="stMarkdownContainer"],
+[data-testid="stMain"] [data-testid="stMarkdownContainer"] p,
+[data-testid="stMain"] [data-testid="stMarkdownContainer"] span,
+[data-testid="stMain"] [data-testid="stMarkdownContainer"] div {
+    color: inherit;
+}
+
+/* Expanders (competitor cards etc.): white card, dark text */
+[data-testid="stMain"] [data-testid="stExpander"] {
+    background: var(--white) !important;
+    border: 1px solid var(--gray-200) !important;
+}
+[data-testid="stMain"] [data-testid="stExpander"] summary,
+[data-testid="stMain"] [data-testid="stExpander"] summary * {
+    color: var(--black) !important;
+}
+[data-testid="stMain"] [data-testid="stExpander"] p,
+[data-testid="stMain"] [data-testid="stExpander"] li {
+    color: var(--gray-600) !important;
+}
+
+/* Tabs: bump unselected tabs to AA-contrast gray, keep selected black */
+[data-testid="stMain"] [data-baseweb="tab"] {
+    color: var(--gray-500) !important;
+}
+[data-testid="stMain"] [data-baseweb="tab"][aria-selected="true"] {
+    color: var(--black) !important;
+}
+
+/* Inputs: dark text on white, readable placeholders */
+[data-testid="stMain"] input,
+[data-testid="stMain"] textarea {
+    color: var(--black) !important;
+    background: var(--white) !important;
+}
+[data-testid="stMain"] input::placeholder,
+[data-testid="stMain"] textarea::placeholder {
+    color: var(--gray-500) !important;
+    opacity: 1 !important;
+}
+
+/* Links: keep the accent red, but darkened for contrast on white */
+[data-testid="stMain"] a {
+    color: #B00000 !important;
+}
+
+/* Metric value text can't be overridden to inherit — pin it black */
+div[data-testid="stMetric"] [data-testid="stMetricValue"] {
+    color: var(--black) !important;
+}
+
+/* ===== END READABILITY SAFETY NET ================================= */
+
 .stDataFrame th {
     background: var(--black) !important;
     color: var(--white) !important;
