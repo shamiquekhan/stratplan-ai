@@ -58,6 +58,103 @@ async def create_plan(plan: BusinessPlanCreate, db: Session = Depends(get_db)):
     return db_plan
 
 
+@router.post("/plans/seed", response_model=BusinessPlanResponse, status_code=201)
+async def seed_demo_plan(db: Session = Depends(get_db)):
+    existing = db.query(BusinessPlan).filter(BusinessPlan.name == "Q4 SaaS Growth Plan").first()
+    if existing:
+        return existing
+
+    plan = BusinessPlan(
+        name="Q4 SaaS Growth Plan",
+        description="High-growth B2B SaaS expansion plan focusing on product-led growth and enterprise sales.",
+        frequency=PlanFrequency.QUARTERLY,
+        status=PlanStatus.ACTIVE,
+        industry="SaaS",
+        company_size="$100k-1M",
+        revenue_range="$100k-1M"
+    )
+    db.add(plan)
+    db.commit()
+    db.refresh(plan)
+
+    # Add summary, financials, etc.
+    from app.db.models import ExecutiveSummary, FinancialProjection, MarketAnalysis, CompetitorAnalysis, Strategy, OKR, ExecutionTracker
+    from app.services.financial_engine import FinancialEngine
+
+    summary = ExecutiveSummary(
+        plan_id=plan.id,
+        content="### Executive Summary\n\nThis Q4 SaaS Growth Plan outlines our strategic roadmap to scale annual recurring revenue (ARR) from $500k to $2.5M. By leveraging product-led growth (PLG) for SMBs and a targeted outbound motion for mid-market accounts, we project reaching cash flow break-even by Month 8.",
+        key_highlights=["30% MoM growth target", "Cash flow break-even by Month 8", "Enterprise expansion via outbound sales"]
+    )
+    db.add(summary)
+
+    fin_engine = FinancialEngine()
+    assumptions = {
+        "revenue_growth_rate": 0.30,
+        "gross_margin": 0.72,
+        "operating_expense_ratio": 0.50,
+        "tax_rate": 0.21,
+        "interest_rate": 0.05,
+        "depreciation_rate": 0.10,
+        "working_capital_days": 30,
+        "capex_percentage_of_revenue": 0.05,
+        "churn_rate": 0.03,
+        "cac": 850
+    }
+    projections = fin_engine.build_projections(assumptions, starting_revenue=50000, months=12)
+    for pnl_row in projections["pnl"]:
+        fp = FinancialProjection(
+            plan_id=plan.id,
+            period=pnl_row["period"],
+            year=2026,
+            quarter=((int(pnl_row["period"].replace("Mo ", "")) - 1) // 3) + 1,
+            month=int(pnl_row["period"].replace("Mo ", "")),
+            revenue=pnl_row["revenue"],
+            cogs=pnl_row["cogs"],
+            gross_profit=pnl_row["gross_profit"],
+            operating_expenses=pnl_row["operating_expenses"],
+            ebitda=pnl_row["ebitda"],
+            depreciation=pnl_row["depreciation"],
+            interest=pnl_row["interest"],
+            tax=pnl_row["tax"],
+            net_income=pnl_row["net_income"],
+            cash_flow_operating=projections["cash_flow"][int(pnl_row["period"].replace("Mo ", "")) - 1]["operating"],
+            cash_flow_investing=projections["cash_flow"][int(pnl_row["period"].replace("Mo ", "")) - 1]["investing"],
+            cash_flow_financing=projections["cash_flow"][int(pnl_row["period"].replace("Mo ", "")) - 1]["financing"],
+            net_cash_flow=projections["cash_flow"][int(pnl_row["period"].replace("Mo ", "")) - 1]["net_cash_flow"],
+            cash_balance=projections["balance_sheet"][int(pnl_row["period"].replace("Mo ", "")) - 1]["cash"],
+            assumptions=assumptions
+        )
+        db.add(fp)
+
+    market = MarketAnalysis(
+        plan_id=plan.id,
+        tam=15000000000.0,
+        sam=2500000000.0,
+        som=150000000.0,
+        market_growth_rate=0.22,
+        key_trends=["AI-driven automation in business workflows", "Shift towards PLG with enterprise upgrade paths"],
+        target_segments=[{"segment": "Mid-Market B2B SaaS", "size": "50-500 employees", "need": "Workflow optimization"}],
+        industry_benchmarks={"avg_growth_rate": 0.35, "avg_gross_margin": 0.70},
+        macro_indicators={"interest_rate": 0.05, "inflation_rate": 0.028}
+    )
+    db.add(market)
+
+    strategy = Strategy(
+        plan_id=plan.id,
+        swot={"strengths": ["Proprietary AI engine"], "weaknesses": ["Brand awareness"], "opportunities": ["Global expansion"], "threats": ["Competition"]},
+        pestle={"political": "Favorable", "economic": "Stable", "social": "High demand", "technological": "AI boom", "legal": "Compliant", "environmental": "Green"},
+        gtm_strategy={"channels": ["Content & SEO", "Outbound Sales"], "value_proposition": "Automate business operations.", "pricing_strategy": "Tiered SaaS"},
+        value_proposition="Automate business operations with AI intelligence.",
+        pricing_strategy="Tiered subscription: Starter ($49/mo), Pro ($199/mo)",
+        channel_strategy=["Content & SEO", "Outbound Sales"]
+    )
+    db.add(strategy)
+
+    db.commit()
+    return plan
+
+
 @router.get("/plans", response_model=List[BusinessPlanResponse])
 async def list_plans(
     skip: int = 0,
