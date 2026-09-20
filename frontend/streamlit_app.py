@@ -2,8 +2,71 @@ import streamlit as st
 import time
 import pandas as pd
 import json
+import os
 from datetime import datetime, timedelta
 from typing import Dict, Any, List
+
+# --- LOCAL PERSISTENCE -----------------------------------------------
+# Plans are stored as JSON on the Streamlit Cloud container filesystem so they
+# survive page reloads, new tabs and reconnects. NOTE: the container filesystem
+# is ephemeral — a redeploy (fresh git push) or app restart resets the store.
+_REPO_STORE = os.path.join(os.path.dirname(__file__), "plans_store.json")
+_TMP_STORE = "/tmp/plans_store.json"  # fallback when the repo dir is read-only
+_STORE_PATH = {"current": os.environ.get("STRATPLAN_STORE_PATH", _REPO_STORE)}
+
+
+def _store_candidates() -> List[str]:
+    primary = os.environ.get("STRATPLAN_STORE_PATH", _REPO_STORE)
+    seen, out = set(), []
+    for p in (_STORE_PATH["current"], primary, _TMP_STORE):
+        if p and p not in seen:
+            seen.add(p)
+            out.append(p)
+    return out
+
+
+def _load_store() -> List[Dict]:
+    """Read plans from the first existing JSON store. [] if none/corrupt."""
+    for path in _store_candidates():
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, list):
+                _STORE_PATH["current"] = path
+                return data
+        except FileNotFoundError:
+            continue
+        except (json.JSONDecodeError, OSError):
+            # Corrupt store (e.g. killed mid-write): back it up and start
+            # fresh rather than crashing the app.
+            try:
+                os.replace(path, path + ".corrupt")
+            except OSError:
+                pass
+    return []
+
+
+def _save_store(plans: List[Dict]) -> bool:
+    """Atomically persist plans (write temp file, then rename). Falls back to
+    /tmp when the primary location is read-only. Returns success."""
+    for path in _store_candidates():
+        tmp = path + ".tmp"
+        try:
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(plans, f, ensure_ascii=False)
+            os.replace(tmp, path)
+            _STORE_PATH["current"] = path
+            return True
+        except OSError:
+            continue
+    st.warning("Could not save plans to disk — they will be lost on reload.")
+    return False
+
+
+def _save_plan_to_store(plan_result: Dict) -> None:
+    plans = _load_store()
+    plans.append(plan_result)
+    _save_store(plans)
 
 st.set_page_config(
     page_title="StratPlan — AI Planning System",
@@ -15,7 +78,6 @@ st.set_page_config(
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
-
 :root {
     --black: #000000;
     --white: #FFFFFF;
@@ -555,10 +617,14 @@ def swiss_metric_card(label, value):
 # --- MAIN APP ---
 
 def main():
+    # Hydrate session from the JSON store so plans survive page reloads,
+    # new tabs and reconnects (one-time per browser session).
     if "plans" not in st.session_state:
-        st.session_state.plans = []
+        st.session_state.plans = _load_store()
     if "current_plan_id" not in st.session_state:
-        st.session_state.current_plan_id = None
+        # Keep the most recent plan open across reloads, when valid.
+        stored = st.session_state.plans
+        st.session_state.current_plan_id = stored[-1]["id"] if stored else None
 
     with st.sidebar:
         st.markdown("""<div style="padding:8px 0 24px 0;"><div style="font-size:1.4rem;font-weight:700;letter-spacing:-0.04em;line-height:0.92;color:#FFFFFF !important;">STRATPLAN<span style="color:#FF0000 !important;">.</span></div><div style="font-size:9px;letter-spacing:0.25em;text-transform:uppercase;color:#FFFFFF !important;margin-top:4px;">AI PLANNING SYSTEM</div></div>""", unsafe_allow_html=True)
@@ -588,7 +654,7 @@ def main():
             STEP 3 &mdash; EXPORT PDF / DOCX / XLSX
             </div>
             <div style="font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:#6E6E6E !important;margin-top:14px;">
-            {n_plans} PLAN{"S" if n_plans != 1 else ""} THIS SESSION · STORED IN THIS BROWSER
+            {n_plans} PLAN{"S" if n_plans != 1 else ""} SAVED ON THE SERVER · RESETS ON REDEPLOY
             </div>""",
             unsafe_allow_html=True,
         )
@@ -683,8 +749,15 @@ def create_plan_page():
             starting_revenue = user_inputs.get("current_revenue", 0) or stage_baseline.get(user_inputs.get("stage", "idea"), 10000)
             financial_data = engine.build_projections(assumptions, starting_revenue, user_inputs=user_inputs)
 
+            # Robust ID: max of store + session, so IDs never collide across
+            # sessions sharing the same JSON store.
+            next_id = max(
+                [p.get("id", 0) for p in st.session_state.plans]
+                + [p.get("id", 0) for p in _load_store()]
+                + [0]
+            ) + 1
             plan_result = {
-                "id": len(st.session_state.plans) + 1,
+                "id": next_id,
                 "plan": plan_data,
                 "user_inputs": user_inputs,
                 "generated_plan": generate_plan_summary(plan_data, user_inputs),
@@ -696,6 +769,7 @@ def create_plan_page():
                 "created_at": datetime.now().isoformat()
             }
             st.session_state.plans.append(plan_result)
+            _save_plan_to_store(plan_result)
             st.session_state.current_plan_id = plan_result["id"]
 
             progress_bar.empty()
@@ -797,20 +871,21 @@ def plan_details_page():
 
 
 def format_money(v, compact=True):
-    """Compact human-readable money: $1.2M, $850k, $940."""
+    """Compact human-readable money: $1.2M, $850k, -$33k."""
     try:
         v = float(v)
     except (TypeError, ValueError):
         return "--"
-    v = abs(v) if v != 0 else v
+    sign = "-" if v < 0 else ""
+    a = abs(v)
     if compact:
-        if abs(v) >= 1_000_000_000:
-            return f"${v / 1_000_000_000:.1f}B"
-        if abs(v) >= 1_000_000:
-            return f"${v / 1_000_000:.1f}M"
-        if abs(v) >= 1_000:
-            return f"${v / 1_000:.0f}k"
-    return f"${v:,.0f}"
+        if a >= 1_000_000_000:
+            return f"{sign}${a / 1_000_000_000:.1f}B"
+        if a >= 1_000_000:
+            return f"{sign}${a / 1_000_000:.1f}M"
+        if a >= 1_000:
+            return f"{sign}${a / 1_000:.0f}k"
+    return f"{sign}${a:,.0f}"
 
 
 def overview_tab(plan):
